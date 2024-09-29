@@ -162,4 +162,21 @@ inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ std::nullptr_t
 #endif
 }
 
+/* 着色器相关  Shader */
+/**
+ * @brief
+ *
+ * @param csoFileNameInOut [In] 编译好的二进制着色器文件名 - 检查是否存在，如果存在则直接读取
+ * @param hlslFileNmae [In] HLSL源文件名
+ * @param entryPoint   [In] 入口点 - 指定开始的函数
+ * @param shaderModel  [In] 着色器模型 - 格式为"*s_5_0"，*可以为c,d,g,h,p,v之一
+ * @param ppBlobOut    [Out] 输出着色器二进制信息
+ * @return HRESULT
+ */
+HRESULT CompileShaderFromFile(const WCHAR *csoFileNameInOut,
+                              const WCHAR *hlslFileName,
+                              LPCSTR entryPoint,
+                              LPCSTR shaderModel,
+                              ID3DBlob **ppBlobOut);
+
 #endif
