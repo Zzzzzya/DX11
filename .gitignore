@@ -1,3 +1,4 @@
 /.vscode
 /out
 /.clang-format
+*.cso

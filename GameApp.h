@@ -2,13 +2,24 @@
 #define GAMEAPP_H
 
 #include "d3dApp.h"
+
+using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT4;
+using DirectX::XMMATRIX;
+
 class GameApp : public D3DApp
 {
     /**
-     * @brief 顶点输入布局
+     * @brief
      *
      */
   public:
+    struct ConstantBuffer
+    {
+        DirectX::XMMATRIX mWorld;
+        DirectX::XMMATRIX mView;
+        DirectX::XMMATRIX mProjection;
+    };
     struct VertexPosColor
     {
         DirectX::XMFLOAT3 pos;
@@ -48,6 +59,10 @@ class GameApp : public D3DApp
     ComPtr<ID3D11PixelShader> m_pPixelShader;
     ComPtr<ID3D11InputLayout> m_pInputLayout;
     ComPtr<ID3D11Buffer> m_pVertexBuffer;
+    ComPtr<ID3D11Buffer> m_pIndexBuffer;
+
+    ConstantBuffer m_cbData;
+    ComPtr<ID3D11Buffer> m_pConstantBuffer;
 };
 
 #endif
