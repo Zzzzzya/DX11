@@ -37,6 +37,11 @@ class GameApp : public D3DApp
     void DrawScene();
 
   private:
+    void ImGUISet();
+    void UpdateCamera(float);
+    void UpdateMVP(float);
+
+  private:
     /**
      * @brief 初始化着色器 && 特效
      *

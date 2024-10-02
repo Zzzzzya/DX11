@@ -36,9 +36,19 @@ void GameApp::OnResize()
     D3DApp::OnResize();
 }
 
-void GameApp::UpdateScene(float dt)
+void GameApp::ImGUISet()
 {
+    ImGui::ShowAboutWindow();
+    ImGui::ShowDemoWindow();
+    ImGui::ShowUserGuide();
+}
 
+void GameApp::UpdateCamera(float dt)
+{
+}
+
+void GameApp::UpdateMVP(float dt)
+{
     static float phi = 0.0f, theta = 0.0f;
     phi += 0.3f * dt, theta += 0.37f * dt;
     m_cbData.mWorld = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationX(phi) * DirectX::XMMatrixRotationY(theta));
@@ -51,6 +61,15 @@ void GameApp::UpdateScene(float dt)
     m_pd3dImmediateContext->Unmap(m_pConstantBuffer.Get(), 0);
 }
 
+void GameApp::UpdateScene(float dt)
+{
+    ImGUISet();
+
+    UpdateCamera(dt);
+
+    UpdateMVP(dt);
+}
+
 void GameApp::DrawScene()
 {
     assert(m_pd3dImmediateContext);
@@ -61,6 +80,10 @@ void GameApp::DrawScene()
                                                   1.0f, 0);
 
     m_pd3dImmediateContext->DrawIndexed(36, 0, 0);
+
+    ImGui::Render();
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
     HR(m_pSwapChain->Present(0, 0));
 }
 

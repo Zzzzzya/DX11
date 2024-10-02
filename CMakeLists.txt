@@ -22,7 +22,7 @@ set(SHADER_STATIC_COMPILE OFF)
 
 # 使用ImGui时设置为ON
 # 需要将项目中的ImGui文件夹复制进来，保留*.h/*.cpp/CMakeLists.txt
-set(USE_IMGUI OFF)
+set(USE_IMGUI ON)
 
 # 使用Assimp时设置为ON
 # 需要将解压的assimp文件夹内CMakeList.txt所在的全部文件复制到当前项目的Assimp文件夹内
@@ -38,7 +38,8 @@ if(${WIN7_SYSTEM})
     add_compile_definitions(_WIN32_WINNT=0x601)
 endif()
 
-add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
+    "$<$<CXX_COMPILER_ID:Clang>:-finput-charset=UTF-8;-fexec-charset=UTF-8>")
 file(COPY ${HLSL_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(GLOB HLSL_FILES ${HLSL_DIR}/*.hlsl)
 file(GLOB HEADER_FILES ./*.h)
