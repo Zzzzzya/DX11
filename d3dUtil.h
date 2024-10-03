@@ -30,7 +30,8 @@
 // 安全COM组件释放宏
 #define SAFE_RELEASE(p)                                                                                                \
     {                                                                                                                  \
-        if ((p)) {                                                                                                     \
+        if ((p))                                                                                                       \
+        {                                                                                                              \
             (p)->Release();                                                                                            \
             (p) = nullptr;                                                                                             \
         }                                                                                                              \
@@ -47,7 +48,8 @@
 // [In]resource				D3D11设备创建出的对象
 // [In]name					对象名
 template <UINT TNameLength>
-inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const char (&name)[TNameLength]) {
+inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const char (&name)[TNameLength])
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     resource->SetPrivateData(WKPDID_D3DDebugObjectName, TNameLength - 1, name);
 #else
@@ -63,7 +65,8 @@ inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const
 // [In]resource				D3D11设备创建出的对象
 // [In]name					对象名
 // [In]length				字符串长度
-inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ LPCSTR name, _In_ UINT length) {
+inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ LPCSTR name, _In_ UINT length)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     resource->SetPrivateData(WKPDID_D3DDebugObjectName, length, name);
 #else
@@ -79,7 +82,8 @@ inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ LPCST
 // 为D3D设备创建出来的对象在图形调试器中设置对象名
 // [In]resource				D3D11设备创建出的对象
 // [In]name					对象名
-inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const std::string &name) {
+inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const std::string &name)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     resource->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.length(), name.c_str());
 #else
@@ -93,7 +97,8 @@ inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ const
 // ------------------------------
 // 为D3D设备创建出来的对象在图形调试器中清空对象名
 // [In]resource				D3D11设备创建出的对象
-inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ std::nullptr_t) {
+inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ std::nullptr_t)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     resource->SetPrivateData(WKPDID_D3DDebugObjectName, 0, nullptr);
 #else
@@ -108,7 +113,8 @@ inline void D3D11SetDebugObjectName(_In_ ID3D11DeviceChild *resource, _In_ std::
 // [In]object				DXGI对象
 // [In]name					对象名
 template <UINT TNameLength>
-inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const char (&name)[TNameLength]) {
+inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const char (&name)[TNameLength])
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     object->SetPrivateData(WKPDID_D3DDebugObjectName, TNameLength - 1, name);
 #else
@@ -124,7 +130,8 @@ inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const char (&n
 // [In]object				DXGI对象
 // [In]name					对象名
 // [In]length				字符串长度
-inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ LPCSTR name, _In_ UINT length) {
+inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ LPCSTR name, _In_ UINT length)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     object->SetPrivateData(WKPDID_D3DDebugObjectName, length, name);
 #else
@@ -140,7 +147,8 @@ inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ LPCSTR name, _
 // 为DXGI对象在图形调试器中设置对象名
 // [In]object				DXGI对象
 // [In]name					对象名
-inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const std::string &name) {
+inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const std::string &name)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     object->SetPrivateData(WKPDID_D3DDebugObjectName, (UINT)name.length(), name.c_str());
 #else
@@ -154,7 +162,8 @@ inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ const std::str
 // ------------------------------
 // 为DXGI对象在图形调试器中清空对象名
 // [In]object				DXGI对象
-inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ std::nullptr_t) {
+inline void DXGISetDebugObjectName(_In_ IDXGIObject *object, _In_ std::nullptr_t)
+{
 #if (defined(DEBUG) || defined(_DEBUG)) && (GRAPHICS_DEBUGGER_OBJECT_NAME)
     object->SetPrivateData(WKPDID_D3DDebugObjectName, 0, nullptr);
 #else
@@ -178,5 +187,17 @@ HRESULT CompileShaderFromFile(const WCHAR *csoFileNameInOut,
                               LPCSTR entryPoint,
                               LPCSTR shaderModel,
                               ID3DBlob **ppBlobOut);
+
+inline DirectX::XMMATRIX XM_CALLCONV InverseTranspose(DirectX::FXMMATRIX M)
+{
+    using namespace DirectX;
+
+    // 世界矩阵的逆的转置仅针对法向量，我们也不需要世界矩阵的平移分量
+    // 而且不去掉的话，后续再乘上观察矩阵之类的就会产生错误的变换结果
+    XMMATRIX A = M;
+    A.r[3] = g_XMIdentityR3;
+
+    return XMMatrixTranspose(XMMatrixInverse(nullptr, A));
+}
 
 #endif

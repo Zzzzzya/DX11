@@ -2,6 +2,8 @@
 #define GAMEAPP_H
 
 #include "d3dApp.h"
+#include "Geometry.h"
+#include "LightHelper.h"
 
 using DirectX::XMFLOAT3;
 using DirectX::XMFLOAT4;
@@ -10,21 +12,25 @@ using DirectX::XMMATRIX;
 class GameApp : public D3DApp
 {
     /**
-     * @brief
+     * @brief 常量缓冲区
      *
      */
   public:
-    struct ConstantBuffer
+    struct VSConstantBuffer
     {
-        DirectX::XMMATRIX mWorld;
-        DirectX::XMMATRIX mView;
-        DirectX::XMMATRIX mProjection;
+        DirectX::XMMATRIX world;
+        DirectX::XMMATRIX view;
+        DirectX::XMMATRIX projection;
+        DirectX::XMMATRIX worldInvTranspose;
     };
-    struct VertexPosColor
+
+    struct PSConstantBuffer
     {
-        DirectX::XMFLOAT3 pos;
-        DirectX::XMFLOAT4 color;
-        static const D3D11_INPUT_ELEMENT_DESC inputLayout[2];
+        DirectionalLight dirLight;
+        PointLight pointLight;
+        SpotLight spotLight;
+        Material material;
+        DirectX::XMFLOAT4 eyePos;
     };
 
   public:
@@ -35,6 +41,7 @@ class GameApp : public D3DApp
     void OnResize();
     void UpdateScene(float dt);
     void DrawScene();
+    bool ResetMesh(const Geometry::MeshData<VertexPosNormalColor> &meshData);
 
   private:
     void ImGUISet();
@@ -60,14 +67,23 @@ class GameApp : public D3DApp
      *
      */
   private:
-    ComPtr<ID3D11VertexShader> m_pVertexShader;
-    ComPtr<ID3D11PixelShader> m_pPixelShader;
-    ComPtr<ID3D11InputLayout> m_pInputLayout;
     ComPtr<ID3D11Buffer> m_pVertexBuffer;
     ComPtr<ID3D11Buffer> m_pIndexBuffer;
+    ComPtr<ID3D11Buffer> m_pVSConstantBuffer;
+    ComPtr<ID3D11Buffer> m_pPSConstantBuffer;
+    ComPtr<ID3D11InputLayout> m_pInputLayout;
+    UINT m_IndexCount;
 
-    ConstantBuffer m_cbData;
-    ComPtr<ID3D11Buffer> m_pConstantBuffer;
+    ComPtr<ID3D11VertexShader> m_pVertexShader;
+    ComPtr<ID3D11PixelShader> m_pPixelShader;
+    VSConstantBuffer m_VSConstantBuffer;
+    PSConstantBuffer m_PSConstantBuffer;
+
+    ComPtr<ID3D11RasterizerState> m_pRSWireframe;
+
+    DirectionalLight m_DirLight;
+    PointLight m_PointLight;
+    SpotLight m_SpotLight;
 };
 
 #endif
