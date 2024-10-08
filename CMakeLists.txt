@@ -11,6 +11,7 @@ set(TARGET_NAME "DirectX11_Test")
 
 # 设置HLSL文件的存放位置
 set(HLSL_DIR "HLSL")
+set(TEX_DIR "Texture")
 
 # Win7系统设置为ON
 set(WIN7_SYSTEM OFF)
@@ -41,6 +42,7 @@ endif()
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>"
     "$<$<CXX_COMPILER_ID:Clang>:-finput-charset=UTF-8;-fexec-charset=UTF-8>")
 file(COPY ${HLSL_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${TEX_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(GLOB HLSL_FILES ${HLSL_DIR}/*.hlsl)
 file(GLOB HEADER_FILES ./*.h)
 

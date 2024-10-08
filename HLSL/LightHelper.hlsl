@@ -1,26 +1,23 @@
 // Material
-struct Material
-{
+struct Material {
   float4 ambient;
   float4 diffuse;
   float4 specular; // w = 镜面反射强度
   float4 reflect;
-};
+}; // 16 * 4 = 64 bytes
 
 // Lights
 
-struct DirectionalLight
-{
+struct DirectionalLight {
   float4 ambient;
   float4 diffuse;
   float4 specular;
   float3 direction;
   float pad;
-};
+}; // 16 * 4 = 64 bytes
 
 // 点光
-struct PointLight
-{
+struct PointLight {
   float4 ambient;
   float4 diffuse;
   float4 specular;
@@ -30,11 +27,10 @@ struct PointLight
 
   float3 att;
   float pad;
-};
+}; // 16 * 4 = 64 bytes
 
 // 聚光灯
-struct SpotLight
-{
+struct SpotLight {
   float4 ambient;
   float4 diffuse;
   float4 specular;
@@ -47,12 +43,11 @@ struct SpotLight
 
   float3 att;
   float pad;
-};
+}; // 16 * 4 = 64 bytes
 
 float4 CalculateDirectionalLight(DirectionalLight light, Material mat,
                                  float3 normal, float3 viewDir, out float4 A,
-                                 out float4 D, out float4 S)
-{
+                                 out float4 D, out float4 S) {
   float3 lightDir = -light.direction;
   float4 FinalColor = 0.0f;
 
@@ -78,8 +73,7 @@ float4 CalculateDirectionalLight(DirectionalLight light, Material mat,
 
 float4 CalculatePointLight(PointLight light, Material mat, float3 normal,
                            float3 viewDir, float3 pos, out float4 A,
-                           out float4 D, out float4 S)
-{
+                           out float4 D, out float4 S) {
   float3 lightDir = light.position - pos;
   float distance = length(lightDir);
   lightDir /= distance;
@@ -111,4 +105,37 @@ float4 CalculatePointLight(PointLight light, Material mat, float3 normal,
   FinalColor = ambient + diffuse + specular;
 
   return FinalColor;
+}
+
+void CalculateSpotLight(SpotLight light, Material mat, float3 normal,
+                        float3 viewDir, float3 pos, out float4 A, out float4 D,
+                        out float4 S) {
+
+  A = float4(0.0, 0.0f, 0.0f, 0.0f);
+  D = float4(0.0, 0.0f, 0.0f, 0.0f);
+  S = float4(0.0, 0.0f, 0.0f, 0.0f);
+
+  float3 lightVec = light.position - pos;
+  float d = length(lightVec);
+
+  lightVec /= d;
+
+  A = mat.ambient * light.ambient;
+
+  float diffuseFactor = dot(lightVec, normal);
+
+  [flatten] if (diffuseFactor > 0.0f) {
+    float3 v = reflect(-lightVec, normal);
+    float specFactor = pow(saturate(dot(v, viewDir)), mat.specular.w);
+
+    D = diffuseFactor * mat.diffuse * light.diffuse;
+    S = specFactor * mat.specular * light.specular;
+  }
+
+  float spot = pow(max(dot(lightVec, -light.direction), 0.0f), light.Spot);
+  float att = spot / dot(light.att, float3(1.0f, d, d * d));
+
+  A *= spot;
+  D *= spot;
+  S *= spot;
 }
