@@ -5,6 +5,7 @@
 #include "Geometry.h"
 #include "LightHelper.h"
 #include "Camera.h"
+#include "RenderStates.h"
 #include <memory>
 
 using DirectX::XMFLOAT3;
@@ -37,6 +38,7 @@ class GameApp : public D3DApp
     };
     struct PSConstantBuffer
     {
+        XMMATRIX reflection;
         DirectionalLight dirLight[10];
         PointLight pointLight[10];
         SpotLight spotLight[10];
@@ -44,6 +46,11 @@ class GameApp : public D3DApp
         int NumPointLight;
         int NumSpotLight;
         float pad1;
+    };
+    struct CBDrawingStates
+    {
+        int isReflection;
+        float pad[3];
     };
 
     // 一个尽可能小的游戏对象类
@@ -56,6 +63,10 @@ class GameApp : public D3DApp
         Transform &GetTransform();
         // 获取物体变换
         const Transform &GetTransform() const;
+
+        Material &GetMaterial();
+
+        const Material &GetMaterial() const;
 
         // 设置缓冲区
         template <class VertexType, class IndexType>
@@ -127,15 +138,21 @@ class GameApp : public D3DApp
     ComPtr<ID3D11Buffer> m_pVSConstantBufferEveryFrame;
     ComPtr<ID3D11Buffer> m_pVSConstantBufferOnResize;
     ComPtr<ID3D11Buffer> m_pPSConstantBuffer;
+    ComPtr<ID3D11Buffer> m_pCBDrawingStates;
     VSConstantBufferEveryDrawing m_VSConstantBufferEveryDrawing;
     VSConstantBufferEveryFrame m_VSConstantBufferEveryFrame;
     VSConstantBufferOnResize m_VSConstantBufferOnResize;
     PSConstantBuffer m_PSConstantBuffer;
+    CBDrawingStates m_CBDrawingStates;
 
     ComPtr<ID3D11RasterizerState> m_pRSWireframe;
 
     ComPtr<ID3D11SamplerState> m_pSamplerState;
     ComPtr<ID3D11ShaderResourceView> m_pTexture;
+    ComPtr<ID3D11ShaderResourceView> m_pTexture_floor;
+    ComPtr<ID3D11ShaderResourceView> m_pTexture_wireFence;
+    ComPtr<ID3D11ShaderResourceView> m_pTexture_water;
+    ComPtr<ID3D11ShaderResourceView> m_pTexture_brick;
 
     DirectionalLight m_DirLight;
     PointLight m_PointLight;
@@ -143,7 +160,7 @@ class GameApp : public D3DApp
     Material m_Material;
 
     int m_ModelType = 0;
-    int m_LightType = 0;
+    int m_LightType = 1;
 
     std::shared_ptr<Camera> m_pCamera;
     enum class CameraMode
@@ -152,9 +169,12 @@ class GameApp : public D3DApp
         ThirdPerson,
         Free
     };
-    CameraMode m_CameraMode = CameraMode::FirstPerson;
+    CameraMode m_CameraMode = CameraMode::Free;
 
     std::vector<GameObject> Objects;
+    std::vector<GameObject> TransparentObjects;
+    GameObject o_mirror;
+    GameObject m_pointLightObj;
 };
 
 #endif

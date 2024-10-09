@@ -9,6 +9,11 @@ cbuffer VSConstantBufferEveryDrawing : register(b0) {
   Material g_Material;
 };
 
+cbuffer CBDrawingStates : register(b4) {
+  int g_IsReflection;
+  float3 pad;
+}
+
 cbuffer VSConstantBufferEveryFrame : register(b1) {
   matrix g_View;
   float4 g_EyePosW;
@@ -19,6 +24,7 @@ cbuffer VSConstantBufferOnResize : register(b2) {
 };
 
 cbuffer PSConstantBuffer : register(b3) {
+  matrix g_Reflection;
   DirectionalLight g_DirLight[10];
   PointLight g_PointLight[10];
   SpotLight g_SpotLight[10];
