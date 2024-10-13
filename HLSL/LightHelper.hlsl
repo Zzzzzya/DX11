@@ -3,7 +3,7 @@ struct Material {
   float4 ambient;
   float4 diffuse;
   float4 specular; // w = 镜面反射强度
-  float4 reflect;
+  float4 reflect;  // w 是否使用纹理
 }; // 16 * 4 = 64 bytes
 
 // Lights
@@ -95,11 +95,8 @@ void CalculatePointLight(PointLight light, Material mat, float3 normal,
     S = specFactor * mat.specular * light.specular;
   }
 
-  float att =
-      1.0f / dot(light.att, float3(1.0f, d, d * d));
-
-  D *= att;
-  S *= att;
+  D ;
+  S ;
 }
 
 void CalculateSpotLight(SpotLight light, Material mat, float3 normal,

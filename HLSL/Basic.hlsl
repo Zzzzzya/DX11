@@ -1,6 +1,8 @@
 #include "LightHelper.hlsl"
 
 Texture2D g_Tex : register(t0);
+Texture2D g_ShadowMap : register(t1);
+
 SamplerState g_Samlinear : register(s0);
 
 cbuffer VSConstantBufferEveryDrawing : register(b0) {
@@ -31,7 +33,8 @@ cbuffer PSConstantBuffer : register(b3) {
   int g_NumDirLight;
   int g_NumPointLight;
   int g_NumSpotLight;
-  float g_Pad1;
+  float g_bias;
+  matrix g_DirLightMatrix;
 }
 
 // Input Type

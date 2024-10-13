@@ -1,8 +1,34 @@
 #include "Basic.hlsl"
 
+float ShadowCalculate(float4 lightPosH)
+{
+    lightPosH = lightPosH / lightPosH.w;
+    float depth = lightPosH.z;
+
+    float texCoordx = 0.5f * lightPosH.x + 0.5f;
+    float texCoordy = -0.5f * lightPosH.y + 0.5f;
+
+    float depthTex = g_ShadowMap.Sample(g_Samlinear, float2(texCoordx, texCoordy)).r;
+
+    float shadow = depth<depthTex+g_bias?0.0f:1.0f;
+    return shadow;
+}
+
 float4 PS(VertexPosHWNormalTex pIn) : SV_TARGET
 {
-    float4 texColor = g_Tex.Sample(g_Samlinear, pIn.tex);
+    float4 ref = g_Material.reflect;
+    float4 texColor = float4(1.0f,1.0f,1.0f,1.0f);
+
+    // 光源
+    [flatten]
+    if(ref.x >0.5f){
+        return texColor;
+    }
+    
+    [flatten]
+    if(ref.w > 0.5f){
+        texColor = g_Tex.Sample(g_Samlinear, pIn.tex);
+    }
     clip(texColor.a - 0.1f);
 
 
@@ -52,9 +78,13 @@ float4 PS(VertexPosHWNormalTex pIn) : SV_TARGET
         specular += S;
     }
 
+    float4 lightPosH = mul(float4(pIn.posW, 1.0f), g_DirLightMatrix);
+    float shadow = ShadowCalculate(lightPosH);
 
+    diffuse *= (1-shadow);
+    specular *= (1-shadow);
     
-    float4 litColor = texColor * (ambient + diffuse) + specular;
+    float4 litColor = (texColor * (ambient + diffuse) + specular) ;
     litColor.a = texColor.a * g_Material.diffuse.a;
 
     return litColor;

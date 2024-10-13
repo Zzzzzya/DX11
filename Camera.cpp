@@ -25,7 +25,6 @@ float Camera::GetRotationY() const
     return m_Transform.GetRotation().y;
 }
 
-
 XMVECTOR Camera::GetRightAxisXM() const
 {
     return m_Transform.GetRightAxisXM();
@@ -71,6 +70,16 @@ XMMATRIX Camera::GetViewProjXM() const
     return GetViewXM() * GetProjXM();
 }
 
+DirectX::XMMATRIX Camera::GetOrthoProjXM() const
+{
+    return XMMatrixOrthographicLH(100.0f, 100.0f, m_NearZ, m_FarZ);
+}
+
+DirectX::XMMATRIX Camera::GetViewOrthoProjXM() const
+{
+    return GetViewXM() * GetOrthoProjXM();
+}
+
 D3D11_VIEWPORT Camera::GetViewPort() const
 {
     return m_ViewPort;
@@ -84,7 +93,7 @@ void Camera::SetFrustum(float fovY, float aspect, float nearZ, float farZ)
     m_FarZ = farZ;
 }
 
-void Camera::SetViewPort(const D3D11_VIEWPORT & viewPort)
+void Camera::SetViewPort(const D3D11_VIEWPORT &viewPort)
 {
     m_ViewPort = viewPort;
 }
@@ -99,7 +108,6 @@ void Camera::SetViewPort(float topLeftX, float topLeftY, float width, float heig
     m_ViewPort.MaxDepth = maxDepth;
 }
 
-
 // ******************
 // 第一人称/自由视角摄像机
 //
@@ -113,18 +121,18 @@ void FirstPersonCamera::SetPosition(float x, float y, float z)
     SetPosition(XMFLOAT3(x, y, z));
 }
 
-void FirstPersonCamera::SetPosition(const XMFLOAT3& pos)
+void FirstPersonCamera::SetPosition(const XMFLOAT3 &pos)
 {
     m_Transform.SetPosition(pos);
 }
 
-void FirstPersonCamera::LookAt(const XMFLOAT3 & pos, const XMFLOAT3 & target,const XMFLOAT3 & up)
+void FirstPersonCamera::LookAt(const XMFLOAT3 &pos, const XMFLOAT3 &target, const XMFLOAT3 &up)
 {
     m_Transform.SetPosition(pos);
     m_Transform.LookAt(target, up);
 }
 
-void FirstPersonCamera::LookTo(const XMFLOAT3 & pos, const XMFLOAT3 & to, const XMFLOAT3 & up)
+void FirstPersonCamera::LookTo(const XMFLOAT3 &pos, const XMFLOAT3 &to, const XMFLOAT3 &up)
 {
     m_Transform.SetPosition(pos);
     m_Transform.LookTo(to, up);
@@ -168,8 +176,6 @@ void FirstPersonCamera::RotateY(float rad)
     rotation.y = XMScalarModAngle(rotation.y + rad);
     m_Transform.SetRotation(rotation);
 }
-
-
 
 // ******************
 // 第三人称摄像机
@@ -251,7 +257,7 @@ void ThirdPersonCamera::SetRotationY(float rad)
     m_Transform.Translate(m_Transform.GetForwardAxis(), -m_Distance);
 }
 
-void ThirdPersonCamera::SetTarget(const XMFLOAT3 & target)
+void ThirdPersonCamera::SetTarget(const XMFLOAT3 &target)
 {
     m_Target = target;
 }
@@ -266,4 +272,3 @@ void ThirdPersonCamera::SetDistanceMinMax(float minDist, float maxDist)
     m_MinDist = minDist;
     m_MaxDist = maxDist;
 }
-

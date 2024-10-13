@@ -14,10 +14,9 @@
 #include <DirectXMath.h>
 #include "Transform.h"
 
-
 class Camera
 {
-public:
+  public:
     Camera() = default;
     virtual ~Camera() = 0;
 
@@ -55,23 +54,28 @@ public:
     DirectX::XMMATRIX GetViewXM() const;
     DirectX::XMMATRIX GetProjXM() const;
     DirectX::XMMATRIX GetViewProjXM() const;
+    DirectX::XMMATRIX GetOrthoProjXM() const;
+    DirectX::XMMATRIX GetViewOrthoProjXM() const;
 
     // 获取视口
     D3D11_VIEWPORT GetViewPort() const;
-
 
     // 设置视锥体
     void SetFrustum(float fovY, float aspect, float nearZ, float farZ);
 
     // 设置视口
-    void SetViewPort(const D3D11_VIEWPORT& viewPort);
-    void SetViewPort(float topLeftX, float topLeftY, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
+    void SetViewPort(const D3D11_VIEWPORT &viewPort);
+    void SetViewPort(float topLeftX,
+                     float topLeftY,
+                     float width,
+                     float height,
+                     float minDepth = 0.0f,
+                     float maxDepth = 1.0f);
 
-protected:
-
+  protected:
     // 摄像机的变换
     Transform m_Transform = {};
-    
+
     // 视锥体属性
     float m_NearZ = 0.0f;
     float m_FarZ = 0.0f;
@@ -80,21 +84,20 @@ protected:
 
     // 当前视口
     D3D11_VIEWPORT m_ViewPort = {};
-
 };
 
 class FirstPersonCamera : public Camera
 {
-public:
+  public:
     FirstPersonCamera() = default;
     ~FirstPersonCamera() override;
 
     // 设置摄像机位置
     void SetPosition(float x, float y, float z);
-    void SetPosition(const DirectX::XMFLOAT3& pos);
+    void SetPosition(const DirectX::XMFLOAT3 &pos);
     // 设置摄像机的朝向
-    void LookAt(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& target,const DirectX::XMFLOAT3& up);
-    void LookTo(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& to, const DirectX::XMFLOAT3& up);
+    void LookAt(const DirectX::XMFLOAT3 &pos, const DirectX::XMFLOAT3 &target, const DirectX::XMFLOAT3 &up);
+    void LookTo(const DirectX::XMFLOAT3 &pos, const DirectX::XMFLOAT3 &to, const DirectX::XMFLOAT3 &up);
     // 平移
     void Strafe(float d);
     // 直行(平面移动)
@@ -113,7 +116,7 @@ public:
 
 class ThirdPersonCamera : public Camera
 {
-public:
+  public:
     ThirdPersonCamera() = default;
     ~ThirdPersonCamera() override;
 
@@ -132,18 +135,17 @@ public:
     // 设置初始绕Y轴的弧度
     void SetRotationY(float rad);
     // 设置并绑定待跟踪物体的位置
-    void SetTarget(const DirectX::XMFLOAT3& target);
+    void SetTarget(const DirectX::XMFLOAT3 &target);
     // 设置初始距离
     void SetDistance(float dist);
     // 设置最小最大允许距离
     void SetDistanceMinMax(float minDist, float maxDist);
 
-private:
+  private:
     DirectX::XMFLOAT3 m_Target = {};
     float m_Distance = 0.0f;
     // 最小允许距离，最大允许距离
     float m_MinDist = 0.0f, m_MaxDist = 0.0f;
 };
-
 
 #endif
