@@ -6,14 +6,11 @@ cbuffer VSConstantBufferEveryDrawing : register(b0) {
   Material g_Material;
 };
 
-cbuffer VSConstantBufferEveryFrame : register(b1) {
+cbuffer LightBuffer : register(b1) {
   matrix g_View;
-  float4 g_EyePosW;
-};
-
-cbuffer VSConstantBufferOnResize : register(b2) {
   matrix g_Projection;
 };
+
 
 // Input Type
 

@@ -46,6 +46,9 @@ MeshData<VertexType, IndexType> CreateBox(float width = 2.0f,
                                           float depth = 2.0f,
                                           const DirectX::XMFLOAT4 &color = {1.0f, 1.0f, 1.0f, 1.0f});
 
+template <class VertexType = VertexPosNormalTex, class IndexType = DWORD>
+MeshData<VertexType, IndexType> CreateOtherBox(const std::vector<DirectX::XMFLOAT3> &points);
+
 // 创建圆柱体网格数据，slices越大，精度越高。
 template <class VertexType = VertexPosNormalTex, class IndexType = DWORD>
 MeshData<VertexType, IndexType> CreateCylinder(float radius = 1.0f,
@@ -354,6 +357,82 @@ inline MeshData<VertexType, IndexType> CreateBox(float width, float height, floa
         12, 13, 14, 14, 15, 12, // 底面(-Y面)
         16, 17, 18, 18, 19, 16, // 背面(+Z面)
         20, 21, 22, 22, 23, 20  // 正面(-Z面)
+    };
+
+    return meshData;
+}
+
+template <class VertexType, class IndexType>
+MeshData<VertexType, IndexType> CreateOtherBox(const std::vector<DirectX::XMFLOAT3> &points)
+{
+
+    using namespace DirectX;
+
+    MeshData<VertexType, IndexType> meshData;
+    meshData.vertexVec.resize(24);
+
+    Internal::VertexData vertexDataArr[24];
+
+    // 0 近平面右下 XMFLOAT3(w2, -h2, -d2)
+    // 1 近平面右上 XMFLOAT3(w2, h2, -d2)
+    // 2 远平面右上 XMFLOAT3(w2, h2, d2)
+    // 3 远平面右下 XMFLOAT3(w2, -h2, d2)
+
+    // 4 远平面左下 XMFLOAT3(-w2, -h2, d2)
+    // 5 远平面左上 XMFLOAT3(-w2, h2, d2)
+    // 6 近平面左上 XMFLOAT3(-w2, h2, -d2)
+    // 7 近平面左下 XMFLOAT3(-w2, -h2, -d2)
+
+    // 右面
+    vertexDataArr[0].pos = points[0];
+    vertexDataArr[1].pos = points[1];
+    vertexDataArr[2].pos = points[2];
+    vertexDataArr[3].pos = points[3];
+    // 左面(-X面)
+    vertexDataArr[4].pos = points[4];
+    vertexDataArr[5].pos = points[5];
+    vertexDataArr[6].pos = points[6];
+    vertexDataArr[7].pos = points[7];
+
+    // 顶面(+Y面)
+    vertexDataArr[8].pos = points[6];
+    vertexDataArr[9].pos = points[5];
+    vertexDataArr[10].pos = points[2];
+    vertexDataArr[11].pos = points[1];
+    // 底面(-Y面)
+    vertexDataArr[12].pos = points[0];
+    vertexDataArr[13].pos = points[3];
+    vertexDataArr[14].pos = points[4];
+    vertexDataArr[15].pos = points[7];
+    // 背面(+Z面)
+    vertexDataArr[16].pos = points[3];
+    vertexDataArr[17].pos = points[2];
+    vertexDataArr[18].pos = points[5];
+    vertexDataArr[19].pos = points[4];
+    // 正面(-Z面)
+    vertexDataArr[20].pos = points[7];
+    vertexDataArr[21].pos = points[6];
+    vertexDataArr[22].pos = points[1];
+    vertexDataArr[23].pos = points[0];
+
+    for (UINT i = 0; i < 6; ++i)
+    {
+        vertexDataArr[i * 4].tex = XMFLOAT2(0.0f, 1.0f);
+        vertexDataArr[i * 4 + 1].tex = XMFLOAT2(0.0f, 0.0f);
+        vertexDataArr[i * 4 + 2].tex = XMFLOAT2(1.0f, 0.0f);
+        vertexDataArr[i * 4 + 3].tex = XMFLOAT2(1.0f, 1.0f);
+    }
+
+    for (UINT i = 0; i < 24; ++i)
+    {
+        Internal::InsertVertexElement(meshData.vertexVec[i], vertexDataArr[i]);
+    }
+
+    meshData.indexVec = {
+        0, 1, 1, 2, 2, 3, 3, 0, // 右面(+X面)
+        4, 5, 5, 6, 6, 7, 7, 4, // 左面(-X面)
+        5, 2, 1, 6,             //
+        0, 3, 3, 4, 4, 7, 7, 0, //
     };
 
     return meshData;

@@ -37,6 +37,12 @@ class GameApp : public D3DApp
     {
         XMMATRIX projection;
     };
+
+    struct LightBuffer
+    {
+        XMMATRIX view;
+        XMMATRIX pro;
+    };
     struct PSConstantBuffer
     {
         XMMATRIX reflection;
@@ -149,16 +155,20 @@ class GameApp : public D3DApp
     ComPtr<ID3D11Buffer> m_pVSConstantBufferOnResize;
     ComPtr<ID3D11Buffer> m_pPSConstantBuffer;
     ComPtr<ID3D11Buffer> m_pCBDrawingStates;
+
     VSConstantBufferEveryDrawing m_VSConstantBufferEveryDrawing;
     VSConstantBufferEveryFrame m_VSConstantBufferEveryFrame;
     VSConstantBufferOnResize m_VSConstantBufferOnResize;
     PSConstantBuffer m_PSConstantBuffer;
     CBDrawingStates m_CBDrawingStates;
 
-    ComPtr<ID3D11Buffer> m_pShadowConstantBufferView;
-    ComPtr<ID3D11Buffer> m_pShadowConstantBufferPro;
-    VSConstantBufferEveryFrame m_ShadowConstantBufferView;
-    VSConstantBufferOnResize m_ShadowConstantBufferPro;
+    ComPtr<ID3D11Buffer> m_pLightBuffer;
+    LightBuffer m_LightBuffers[4];
+
+    // ComPtr<ID3D11Buffer> m_pShadowConstantBufferView;
+    // ComPtr<ID3D11Buffer> m_pShadowConstantBufferPro;
+    // VSConstantBufferEveryFrame m_ShadowConstantBufferView;
+    // VSConstantBufferOnResize m_ShadowConstantBufferPro;
 
     ComPtr<ID3D11RasterizerState> m_pRSWireframe;
 
@@ -192,11 +202,32 @@ class GameApp : public D3DApp
     std::vector<GameObject> PointLightsObjects;
     GameObject o_mirror;
 
+    int nCSM = 4;
+    float nearZ = 0.5f;
+    float farZ = 200.0f;
+
+    int maxCsmWidth = 8192;
+    std::vector<float> csmWidths = {8192.0f, 4096.0f, 2048.0f, 1024.0f};
+
+    std::vector<GameObject> Frustums;
+    std::vector<GameObject> FrustumAABBs;
+    std::shared_ptr<Camera> m_pShadowCamera;
+    GameObject oFrustum;
+    GameObject oFrustumAABB;
+    bool bShowFrustum = false;
+    bool bShowFrustumAABB = false;
+    bool bShowScene = true;
+    XMMATRIX LightView;
+    XMMATRIX InvLightView;
+
     std::shared_ptr<Texture2D> m_pTexture_Screen;
     std::shared_ptr<Depth2D> m_pTexture_ScreenDepth;
 
     std::shared_ptr<Texture2D> m_pTexture_ShadowMap;
     std::shared_ptr<Depth2D> m_pTexture_ShadowMapDepth;
+
+    std::vector<std::shared_ptr<Texture2D>> m_pShadowMaps;
+    std::vector<std::shared_ptr<Depth2D>> m_pShadowMapDepths;
 };
 
 #endif

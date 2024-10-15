@@ -70,14 +70,14 @@ XMMATRIX Camera::GetViewProjXM() const
     return GetViewXM() * GetProjXM();
 }
 
-DirectX::XMMATRIX Camera::GetOrthoProjXM() const
+DirectX::XMMATRIX Camera::GetOrthoProjXM(float left, float right, float bottom, float top) const
 {
-    return XMMatrixOrthographicLH(100.0f, 100.0f, m_NearZ, m_FarZ);
+    return XMMatrixOrthographicOffCenterLH(left, right, bottom, top, m_NearZ, m_FarZ);
 }
 
-DirectX::XMMATRIX Camera::GetViewOrthoProjXM() const
+DirectX::XMMATRIX Camera::GetViewOrthoProjXM(float left, float right, float bottom, float top) const
 {
-    return GetViewXM() * GetOrthoProjXM();
+    return GetViewXM() * GetOrthoProjXM(left, right, bottom, top);
 }
 
 D3D11_VIEWPORT Camera::GetViewPort() const
@@ -106,6 +106,66 @@ void Camera::SetViewPort(float topLeftX, float topLeftY, float width, float heig
     m_ViewPort.Height = height;
     m_ViewPort.MinDepth = minDepth;
     m_ViewPort.MaxDepth = maxDepth;
+}
+
+void Camera::GetFrustumPoints(std::vector<DirectX::XMFLOAT3> &points, bool isOrtho) const
+{
+    // 拿到 pro * view 的逆矩阵
+    XMMATRIX view = GetViewXM();
+    XMMATRIX proj = GetProjXM();
+    XMMATRIX invView = DirectX::XMMatrixInverse(nullptr, view);
+    XMMATRIX invProj = DirectX::XMMatrixInverse(nullptr, proj);
+
+    points[0] = XMFLOAT3(1.0f, -1.0f, 0.0f);
+    points[1] = XMFLOAT3(1.0f, 1.0f, 0.0f);
+    points[2] = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    points[3] = XMFLOAT3(1.0f, -1.0f, 1.0f);
+
+    points[4] = XMFLOAT3(-1.0f, -1.0f, 1.0f);
+    points[5] = XMFLOAT3(-1.0f, 1.0f, 1.0f);
+    points[6] = XMFLOAT3(-1.0f, 1.0f, 0.0f);
+    points[7] = XMFLOAT3(-1.0f, -1.0f, 0.0f);
+
+    for (int i = 0; i < 8; i++)
+    {
+        XMVECTOR v = XMLoadFloat3(&points[i]);
+        v = XMVector3TransformCoord(v, invProj);
+        v = XMVector3TransformCoord(v, invView);
+        XMStoreFloat3(&points[i], v);
+    }
+}
+
+AABB Camera::GetFrustumAABB(const std::vector<DirectX::XMFLOAT3> &frustum, DirectX::XMMATRIX lightMatrix) const
+{
+    std::vector<DirectX::XMFLOAT3> LightSpaceFrustum(8);
+    // 1. 将点全部转到光照空间
+    for (int i = 0; i < 8; i++)
+    {
+        XMVECTOR v = XMLoadFloat3(&frustum[i]);
+        v = XMVector3TransformCoord(v, lightMatrix);
+        XMStoreFloat3(&LightSpaceFrustum[i], v);
+    }
+
+    // 2. 计算光照空间下的AABB
+    float minX = LightSpaceFrustum[0].x, maxX = LightSpaceFrustum[0].x, minY = LightSpaceFrustum[0].y,
+          maxY = LightSpaceFrustum[0].y, minZ = LightSpaceFrustum[0].z, maxZ = LightSpaceFrustum[0].z;
+    for (int i = 1; i < 8; i++)
+    {
+        if (LightSpaceFrustum[i].x < minX)
+            minX = LightSpaceFrustum[i].x;
+        if (LightSpaceFrustum[i].x > maxX)
+            maxX = LightSpaceFrustum[i].x;
+        if (LightSpaceFrustum[i].y < minY)
+            minY = LightSpaceFrustum[i].y;
+        if (LightSpaceFrustum[i].y > maxY)
+            maxY = LightSpaceFrustum[i].y;
+        if (LightSpaceFrustum[i].z < minZ)
+            minZ = LightSpaceFrustum[i].z;
+        if (LightSpaceFrustum[i].z > maxZ)
+            maxZ = LightSpaceFrustum[i].z;
+    }
+
+    return AABB(XMFLOAT3(minX, minY, minZ), XMFLOAT3(maxX, maxY, maxZ));
 }
 
 // ******************

@@ -19,6 +19,7 @@ VertexPosHWNormalTex VS(VertexPosNormalTex input)
     float4 posV = mul(posW, g_View);
     float4 posH  = mul(posV,g_Projection);
 
+    output.posV = posV;
     output.posW = posW.xyz;
     output.posH = posH;
 

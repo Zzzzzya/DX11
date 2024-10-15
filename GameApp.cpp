@@ -103,6 +103,10 @@ void GameApp::ImGUISet()
         // ImGui::Text("Box Position\n%.2f %.2f %.2f", woodPos.x, woodPos.y, woodPos.z);
         auto cameraPos = m_pCamera->GetPosition();
         ImGui::Text("Camera Position\n%.2f %.2f %.2f", cameraPos.x, cameraPos.y, cameraPos.z);
+        ImGui::Checkbox("Show Frustum", &bShowFrustum);
+        ImGui::Checkbox("Show Frustum AABB", &bShowFrustumAABB);
+        ImGui::Checkbox("Show Scene", &bShowScene);
+
         if (ImGui::CollapsingHeader("Model Change"))
         {
             static int curr_model = static_cast<int>(m_ModelType);
@@ -182,16 +186,6 @@ void GameApp::ImGUISet()
                 break;
             }
 
-            auto camera = std::dynamic_pointer_cast<FirstPersonCamera>(m_pCamera);
-            if (camera)
-            {
-                camera->LookTo(camera->GetPosition(), m_PSConstantBuffer.dirLight[0].direction,
-                               XMFLOAT3(0.0f, 1.0f, 0.0f));
-                m_ShadowConstantBufferView.view = XMMatrixTranspose(camera->GetViewXM());
-                auto pos = camera->GetPosition();
-                m_ShadowConstantBufferView.eyePos = XMFLOAT4(pos.x, pos.y, pos.z, 1.0f);
-            }
-
             m_bNeedUpdatePS = changed;
         }
     }
@@ -252,6 +246,60 @@ void GameApp::UpdateCamera(float dt)
 
     XMStoreFloat4(&m_VSConstantBufferEveryFrame.eyePos, m_pCamera->GetPositionXM());
     m_VSConstantBufferEveryFrame.view = XMMatrixTranspose(m_pCamera->GetViewXM());
+
+    // CSM 视锥划分
+    static std::vector<DirectX::XMFLOAT4> FrustumColors = {
+        DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.6f, 0.2f, 1.0f), //
+        DirectX::XMFLOAT4(0.4f, 0.3f, 0.9f, 1.0f), DirectX::XMFLOAT4(0.9f, 0.2f, 0.4f, 1.0f), //
+        DirectX::XMFLOAT4(0.4f, 0.1f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), //
+        DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f)  //
+    };
+
+    static std::vector<float> CSMpercent = {6.7f, 13.3f, 26.7f, 53.3f};
+
+    static std::vector<DirectX::XMFLOAT3> points =
+        std::vector<DirectX::XMFLOAT3>(8, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+
+    auto camera = std::dynamic_pointer_cast<FirstPersonCamera>(m_pCamera);
+
+    float IniNearZ = m_pCamera->m_NearZ;
+    float IniFarZ = m_pCamera->m_FarZ;
+
+    float nz = nearZ;
+    float fz = 0.0f;
+
+    for (int i = 0; i < nCSM; i++)
+    {
+        fz = nz + CSMpercent[i] * 0.01 * (farZ - nearZ);
+        camera->SetFrustum(XM_PI / 3, AspectRatio(), nz, fz);
+        nz = fz;
+
+        camera->GetFrustumPoints(points);
+        Frustums[i].SetBuffer(m_pd3dDevice.Get(), Geometry::CreateOtherBox<VertexPosNormalTex>(points)); // 视锥
+        Frustums[i].GetMaterial().diffuse = FrustumColors[i];
+        Frustums[i].GetMaterial().reflect.x = 1.0f;
+
+        auto aabb = m_pCamera->GetFrustumAABB(points, LightView); // 通过视锥体计算AABB
+
+        std::vector<XMFLOAT3> aabbPoints;
+        aabb.GetPoints(aabbPoints);
+
+        m_LightBuffers[i].view = XMMatrixTranspose(LightView);
+        m_LightBuffers[i].pro = XMMatrixTranspose(DirectX::XMMatrixOrthographicOffCenterLH(
+            aabb.min.x, aabb.max.x, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z));
+
+        for (auto &p : aabbPoints)
+        {
+            XMVECTOR v = XMLoadFloat3(&p);
+            v = XMVector3Transform(v, InvLightView);
+            XMStoreFloat3(&p, v);
+        }
+
+        FrustumAABBs[i].SetBuffer(m_pd3dDevice.Get(), Geometry::CreateOtherBox<VertexPosNormalTex>(aabbPoints));
+        FrustumAABBs[i].GetMaterial().diffuse = XMFLOAT4(0.8f, 0.3f, 0.2f, 1.0f);
+        FrustumAABBs[i].GetMaterial().reflect.x = 1.0f;
+    }
+    camera->SetFrustum(XM_PI / 3, AspectRatio(), IniNearZ, IniFarZ);
 }
 
 void GameApp::UpdateMVP(float dt)
@@ -268,11 +316,6 @@ void GameApp::UpdateMVP(float dt)
         HR(m_pd3dImmediateContext->Map(m_pPSConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
         memcpy_s(mappedData.pData, sizeof(PSConstantBuffer), &m_PSConstantBuffer, sizeof(PSConstantBuffer));
         m_pd3dImmediateContext->Unmap(m_pPSConstantBuffer.Get(), 0);
-
-        HR(m_pd3dImmediateContext->Map(m_pShadowConstantBufferView.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
-        memcpy_s(mappedData.pData, sizeof(VSConstantBufferEveryFrame), &m_VSConstantBufferOnResize,
-                 sizeof(VSConstantBufferEveryFrame));
-        m_pd3dImmediateContext->Unmap(m_pShadowConstantBufferView.Get(), 0);
 
         m_bNeedUpdatePS = false;
     }
@@ -307,27 +350,36 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->PSSetShader(m_pShadowPS.Get(), nullptr, 0);
 
     m_pd3dImmediateContext->VSSetConstantBuffers(0, 1, m_pVSConstantBufferEveryDrawing.GetAddressOf());
-    m_pd3dImmediateContext->VSSetConstantBuffers(1, 1, m_pShadowConstantBufferView.GetAddressOf());
-    m_pd3dImmediateContext->VSSetConstantBuffers(2, 1, m_pShadowConstantBufferPro.GetAddressOf());
+    m_pd3dImmediateContext->VSSetConstantBuffers(1, 1, m_pLightBuffer.GetAddressOf());
+    // m_pd3dImmediateContext->VSSetConstantBuffers(1, 1, m_pShadowConstantBufferView.GetAddressOf());
+    // m_pd3dImmediateContext->VSSetConstantBuffers(2, 1, m_pShadowConstantBufferPro.GetAddressOf());
     m_pd3dImmediateContext->PSSetSamplers(0, 1, RenderStates::SSAnisotropicWrap.GetAddressOf());
 
     m_pd3dImmediateContext->RSSetState(nullptr);
     m_pd3dImmediateContext->OMSetDepthStencilState(nullptr, 0);
     m_pd3dImmediateContext->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
 
-    CD3D11_VIEWPORT shadowViewPort(0.0f, 0.0f, 4096.0f, 4096.0f);
-    m_pd3dImmediateContext->RSSetViewports(1, &shadowViewPort);
-    m_pd3dImmediateContext->OMSetRenderTargets(1, m_pTexture_ShadowMap->GetAddressOfRenderTarget(),
-                                               m_pTexture_ShadowMapDepth->GetDepthStencil());
-
-    m_pd3dImmediateContext->ClearRenderTargetView(m_pTexture_ShadowMap->GetRenderTarget(), ClearColor);
-    m_pd3dImmediateContext->ClearDepthStencilView(m_pTexture_ShadowMapDepth->GetDepthStencil(),
-                                                  D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL | D3D11_CLEAR_STENCIL, 1.0f,
-                                                  0);
-
-    for (auto &obj : Objects)
+    for (int i = 0; i < 4; i++)
     {
-        obj.Draw(m_pd3dImmediateContext.Get());
+        CD3D11_VIEWPORT shadowViewPort(0.0f, 0.0f, csmWidths[i], csmWidths[i]);
+        m_pd3dImmediateContext->RSSetViewports(1, &shadowViewPort);
+        m_pd3dImmediateContext->OMSetRenderTargets(1, m_pShadowMaps[i]->GetAddressOfRenderTarget(),
+                                                   m_pShadowMapDepths[i]->GetDepthStencil());
+
+        m_pd3dImmediateContext->ClearRenderTargetView(m_pShadowMaps[i]->GetRenderTarget(), ClearColor);
+        m_pd3dImmediateContext->ClearDepthStencilView(m_pShadowMapDepths[i]->GetDepthStencil(),
+                                                      D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL | D3D11_CLEAR_STENCIL,
+                                                      1.0f, 0);
+
+        D3D11_MAPPED_SUBRESOURCE mappedData1;
+        HR(m_pd3dImmediateContext->Map(m_pLightBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData1));
+        memcpy_s(mappedData1.pData, sizeof(LightBuffer), &m_LightBuffers[i], sizeof(LightBuffer));
+        m_pd3dImmediateContext->Unmap(m_pLightBuffer.Get(), 0);
+
+        for (auto &obj : Objects)
+        {
+            obj.Draw(m_pd3dImmediateContext.Get());
+        }
     }
     static ID3D11ShaderResourceView *const pSRV[1] = {nullptr};
     m_pd3dImmediateContext->PSSetShaderResources(0, 1, pSRV);
@@ -363,7 +415,7 @@ void GameApp::DrawScene()
 
     m_pd3dImmediateContext->PSSetShaderResources(1, 1, m_pTexture_ShadowMap->GetAddressOfShaderResource());
 
-    m_pd3dImmediateContext->RSSetState(RenderStates::RSNoCull.Get());
+    m_pd3dImmediateContext->RSSetState(RenderStates::RSWireframe.Get());
 
     m_pd3dImmediateContext->PSSetSamplers(0, 1, RenderStates::SSAnisotropicWrap.GetAddressOf());
     m_pd3dImmediateContext->OMSetBlendState(RenderStates::BSTransparent.Get(), nullptr, 0xFFFFFFFF);
@@ -377,19 +429,41 @@ void GameApp::DrawScene()
     m_pd3dImmediateContext->OMSetDepthStencilState(nullptr, 0);
     m_pd3dImmediateContext->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
 
-    for (auto &obj : Objects)
+    if (bShowScene)
     {
-        obj.Draw(m_pd3dImmediateContext.Get());
+        for (auto &obj : Objects)
+        {
+            obj.Draw(m_pd3dImmediateContext.Get());
+        }
+
+        for (auto &light : PointLightsObjects)
+        {
+            light.Draw(m_pd3dImmediateContext.Get());
+        }
     }
 
-    for (auto &light : PointLightsObjects)
-    {
-        light.Draw(m_pd3dImmediateContext.Get());
-    }
+    m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+    m_pd3dImmediateContext->RSSetState(RenderStates::RSWireframe.Get());
+    // oFrustum.Draw(m_pd3dImmediateContext.Get());
+    // oFrustumAABB.Draw(m_pd3dImmediateContext.Get());
+
+    if (bShowFrustum)
+        for (auto &obj : Frustums)
+        {
+            obj.Draw(m_pd3dImmediateContext.Get());
+        }
+    if (bShowFrustumAABB)
+        for (auto &obj : FrustumAABBs)
+        {
+            obj.Draw(m_pd3dImmediateContext.Get());
+        }
+
+    m_pd3dImmediateContext->RSSetState(nullptr);
 
     m_pd3dImmediateContext->PSSetShaderResources(0, 1, pSRV);
 
     // 屏幕渲染
+    m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_pd3dImmediateContext->RSSetViewports(1, &m_ScreenViewport);
     m_pd3dImmediateContext->OMSetRenderTargets(1, m_pRenderTargetView.GetAddressOf(), nullptr);
     m_pd3dImmediateContext->ClearRenderTargetView(m_pRenderTargetView.Get(), ClearColor);
@@ -492,6 +566,13 @@ bool GameApp::InitResource()
         }
     }
 
+    // oFrustum.GetMaterial().reflect.x = 1.0f;
+    // oFrustum.GetMaterial().diffuse = DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f);
+    static std::vector<DirectX::XMFLOAT3> points =
+        std::vector<DirectX::XMFLOAT3>(8, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+    // oFrustumAABB.GetMaterial().reflect.x = 1.0f;
+    // oFrustumAABB.GetMaterial().diffuse = DirectX::XMFLOAT4(0.8f, 0.3f, 0.2f, 1.0f);
+
     // Light模型
     PointLightsObjects.push_back(GameObject());
     PointLightsObjects[0].SetBuffer(m_pd3dDevice.Get(), meshData2);
@@ -507,11 +588,11 @@ bool GameApp::InitResource()
 
     cbd.ByteWidth = sizeof(VSConstantBufferEveryFrame);
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pVSConstantBufferEveryFrame.GetAddressOf()));
-    HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pShadowConstantBufferView.GetAddressOf()));
+    // HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pShadowConstantBufferView.GetAddressOf()));
 
     cbd.ByteWidth = sizeof(VSConstantBufferOnResize);
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pVSConstantBufferOnResize.GetAddressOf()));
-    HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pShadowConstantBufferPro.GetAddressOf()));
+    // HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pShadowConstantBufferPro.GetAddressOf()));
 
     cbd.ByteWidth = sizeof(PSConstantBuffer);
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pPSConstantBuffer.GetAddressOf()));
@@ -519,14 +600,18 @@ bool GameApp::InitResource()
     cbd.ByteWidth = sizeof(CBDrawingStates);
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pCBDrawingStates.GetAddressOf()));
 
+    cbd.ByteWidth = sizeof(LightBuffer);
+    HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pLightBuffer.GetAddressOf()));
+
     // 相机
     auto camera = std::make_shared<FirstPersonCamera>();
     m_pCamera = camera;
     camera->SetPosition(-32.71f, 17.44f, -32.05f);
     camera->SetViewPort(0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight);
     camera->LookAt(XMFLOAT3(-32.71f, 17.44f, -32.05f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
-    m_pCamera->SetFrustum(XM_PI / 3, AspectRatio(), 0.5f, 1000.0f);
     m_pCamera->SetViewPort(0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight);
+    m_pCamera->SetFrustum(XM_PI / 3, AspectRatio(), 0.5f, 500.0f);
+
     m_VSConstantBufferOnResize.projection = XMMatrixTranspose(m_pCamera->GetProjXM());
     D3D11_MAPPED_SUBRESOURCE mappedData;
     HR(m_pd3dImmediateContext->Map(m_pVSConstantBufferOnResize.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
@@ -569,7 +654,7 @@ bool GameApp::InitResource()
     m_PSConstantBuffer.NumDirLight = 1;
     m_PSConstantBuffer.NumPointLight = 1;
     m_PSConstantBuffer.NumSpotLight = 0;
-    m_PSConstantBuffer.pad1 = 0.0023;
+    m_PSConstantBuffer.pad1 = 0.003;
 
     // 更新PS常量缓冲区资源
     // D3D11_MAPPED_SUBRESOURCE mappedData;
@@ -585,28 +670,86 @@ bool GameApp::InitResource()
     camera = std::make_shared<FirstPersonCamera>();
     m_pLightCamera = camera;
     camera->SetPosition(m_PointLight.position);
-    camera->SetViewPort(0.0f, 0.0f, 4096, 4096);
+    camera->SetViewPort(0.0f, 0.0f, 2048, 2048);
     camera->LookTo(m_PointLight.position, XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
-    camera->SetFrustum(XM_PI / 3, 1, 20.0f, 100.0f);
+    camera->SetFrustum(XM_PI / 3, 1, 20.0f, 120.0f);
     camera->SetViewPort(0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight);
-    m_ShadowConstantBufferPro.projection = XMMatrixTranspose(camera->GetOrthoProjXM());
-    HR(m_pd3dImmediateContext->Map(m_pShadowConstantBufferPro.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
-    memcpy_s(mappedData.pData, sizeof(VSConstantBufferOnResize), &m_ShadowConstantBufferPro,
-             sizeof(VSConstantBufferOnResize));
-    m_pd3dImmediateContext->Unmap(m_pShadowConstantBufferPro.Get(), 0);
+    // m_ShadowConstantBufferPro.projection = XMMatrixTranspose(camera->GetOrthoProjXM());
+    // HR(m_pd3dImmediateContext->Map(m_pShadowConstantBufferPro.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
+    // memcpy_s(mappedData.pData, sizeof(VSConstantBufferOnResize), &m_ShadowConstantBufferPro,
+    //          sizeof(VSConstantBufferOnResize));
+    // m_pd3dImmediateContext->Unmap(m_pShadowConstantBufferPro.Get(), 0);
 
-    m_ShadowConstantBufferView.view = XMMatrixTranspose(camera->GetViewXM());
-    auto pos = camera->GetPosition();
-    m_ShadowConstantBufferView.eyePos = XMFLOAT4(pos.x, pos.y, pos.z, 1.0f);
-    HR(m_pd3dImmediateContext->Map(m_pShadowConstantBufferView.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
-    memcpy_s(mappedData.pData, sizeof(VSConstantBufferEveryFrame), &m_ShadowConstantBufferView,
-             sizeof(VSConstantBufferEveryFrame));
-    m_pd3dImmediateContext->Unmap(m_pShadowConstantBufferView.Get(), 0);
+    // auto aabb = m_pCamera->GetFrustumAABB(points, camera->GetViewXM()); // 通过视锥体计算AABB
+    LightView = camera->GetViewXM();
+    InvLightView = XMMatrixInverse(nullptr, camera->GetViewXM());
 
-    m_PSConstantBuffer.ShadowMatrix = XMMatrixTranspose(camera->GetViewXM() * camera->GetOrthoProjXM());
+    // m_ShadowConstantBufferView.view = XMMatrixTranspose(camera->GetViewXM());
+    // auto pos = camera->GetPosition();
+    // m_ShadowConstantBufferView.eyePos = XMFLOAT4(pos.x, pos.y, pos.z, 1.0f);
+    // HR(m_pd3dImmediateContext->Map(m_pShadowConstantBufferView.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
+    // memcpy_s(mappedData.pData, sizeof(VSConstantBufferEveryFrame), &m_ShadowConstantBufferView,
+    //          sizeof(VSConstantBufferEveryFrame));
+    // m_pd3dImmediateContext->Unmap(m_pShadowConstantBufferView.Get(), 0);
+
+    m_PSConstantBuffer.ShadowMatrix = XMMatrixTranspose(camera->GetViewXM() * camera->GetOrthoProjXM(-50, 50, -50, 50));
     HR(m_pd3dImmediateContext->Map(m_pPSConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
     memcpy_s(mappedData.pData, sizeof(PSConstantBuffer), &m_PSConstantBuffer, sizeof(PSConstantBuffer));
     m_pd3dImmediateContext->Unmap(m_pPSConstantBuffer.Get(), 0);
+
+    // CSM 视锥划分
+    static std::vector<DirectX::XMFLOAT4> FrustumColors = {
+        DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.6f, 0.2f, 1.0f), //
+        DirectX::XMFLOAT4(0.4f, 0.3f, 0.9f, 1.0f), DirectX::XMFLOAT4(0.9f, 0.2f, 0.4f, 1.0f), //
+        DirectX::XMFLOAT4(0.4f, 0.1f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), //
+        DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f), DirectX::XMFLOAT4(0.2f, 0.3f, 0.6f, 1.0f)  //
+    };
+
+    static std::vector<float> CSMpercent = {6.7f, 13.3f, 26.7f, 53.3f};
+
+    camera = std::make_shared<FirstPersonCamera>();
+    m_pShadowCamera = camera;
+    camera->SetPosition(-32.71f, 17.44f, -32.05f);
+    camera->SetViewPort(0.0f, 0.0f, (float)m_ClientWidth, (float)m_ClientHeight);
+    camera->LookAt(XMFLOAT3(-32.71f, 17.44f, -32.05f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f));
+
+    float nz = nearZ;
+    float fz = 0.0f;
+
+    for (int i = 0; i < nCSM; i++)
+    {
+        Frustums.push_back(GameObject());
+        FrustumAABBs.push_back(GameObject());
+
+        fz = nz + CSMpercent[i] * 0.01 * (farZ - nearZ);
+        camera->SetFrustum(XM_PI / 3, AspectRatio(), nz, fz);
+        nz = fz;
+
+        camera->GetFrustumPoints(points);
+        Frustums[i].SetBuffer(m_pd3dDevice.Get(), Geometry::CreateOtherBox<VertexPosNormalTex>(points)); // 视锥
+        Frustums[i].GetMaterial().diffuse = FrustumColors[i];
+        Frustums[i].GetMaterial().reflect.x = 1.0f;
+
+        auto aabb = m_pCamera->GetFrustumAABB(points, LightView); // 通过视锥体计算AABB
+
+        std::vector<XMFLOAT3> aabbPoints;
+        aabb.GetPoints(aabbPoints);
+
+        m_LightBuffers[i].view = XMMatrixTranspose(LightView);
+        m_LightBuffers[i].pro = XMMatrixTranspose(DirectX::XMMatrixOrthographicOffCenterLH(
+            aabb.min.x, aabb.max.x, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z));
+
+        for (auto &p : aabbPoints)
+        {
+            XMVECTOR v = XMLoadFloat3(&p);
+            v = XMVector3Transform(v, InvLightView);
+            XMStoreFloat3(&p, v);
+        }
+
+        FrustumAABBs[i].SetBuffer(m_pd3dDevice.Get(), Geometry::CreateOtherBox<VertexPosNormalTex>(aabbPoints));
+        FrustumAABBs[i].GetMaterial().diffuse = XMFLOAT4(0.8f, 0.3f, 0.2f, 1.0f);
+        FrustumAABBs[i].GetMaterial().reflect.x = 1.0f;
+    }
 
     // Texture
     HR(CreateDDSTextureFromFile(m_pd3dDevice.Get(), L"Texture\\WoodCrate.dds", nullptr, m_pTexture.GetAddressOf()));
@@ -622,8 +765,15 @@ bool GameApp::InitResource()
     // 渲染纹理
     m_pTexture_Screen = std::make_shared<Texture2D>(m_pd3dDevice.Get(), 1280, 720, DXGI_FORMAT_R8G8B8A8_UNORM);
     m_pTexture_ScreenDepth = std::make_shared<Depth2D>(m_pd3dDevice.Get(), 1280, 720);
-    m_pTexture_ShadowMap = std::make_shared<Texture2D>(m_pd3dDevice.Get(), 4096, 4096, DXGI_FORMAT_R8G8B8A8_UNORM);
-    m_pTexture_ShadowMapDepth = std::make_shared<Depth2D>(m_pd3dDevice.Get(), 4096, 4096);
+    m_pTexture_ShadowMap = std::make_shared<Texture2D>(m_pd3dDevice.Get(), 2048, 2048, DXGI_FORMAT_R8G8B8A8_UNORM);
+    m_pTexture_ShadowMapDepth = std::make_shared<Depth2D>(m_pd3dDevice.Get(), 2048, 2048);
+    for (int i = 0; i < nCSM; i++)
+    {
+        int size = maxCsmWidth / (1 << i);
+        m_pShadowMaps.emplace_back(
+            std::make_shared<Texture2D>(m_pd3dDevice.Get(), size, size, DXGI_FORMAT_R8G8B8A8_UNORM));
+        m_pShadowMapDepths.emplace_back(std::make_shared<Depth2D>(m_pd3dDevice.Get(), size, size));
+    }
 
     // ******************
     // 设置调试对象名

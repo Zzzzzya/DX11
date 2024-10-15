@@ -48,6 +48,7 @@ struct VertexPosNormalTex {
 };
 // Out
 struct VertexPosHWNormalTex {
+  float4 posV : POSITION1;
   float4 posH : SV_POSITION;
   float3 posW : POSITION;
   float3 normalW : NORMAL;

@@ -13,6 +13,8 @@
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include "Transform.h"
+#include <vector>
+#include "AABB.h"
 
 class Camera
 {
@@ -54,8 +56,8 @@ class Camera
     DirectX::XMMATRIX GetViewXM() const;
     DirectX::XMMATRIX GetProjXM() const;
     DirectX::XMMATRIX GetViewProjXM() const;
-    DirectX::XMMATRIX GetOrthoProjXM() const;
-    DirectX::XMMATRIX GetViewOrthoProjXM() const;
+    DirectX::XMMATRIX GetOrthoProjXM(float, float, float, float) const;
+    DirectX::XMMATRIX GetViewOrthoProjXM(float, float, float, float) const;
 
     // 获取视口
     D3D11_VIEWPORT GetViewPort() const;
@@ -72,7 +74,10 @@ class Camera
                      float minDepth = 0.0f,
                      float maxDepth = 1.0f);
 
-  protected:
+    void GetFrustumPoints(std::vector<DirectX::XMFLOAT3> &points, bool isOrtho = false) const;
+    AABB GetFrustumAABB(const std::vector<DirectX::XMFLOAT3> &frustum, DirectX::XMMATRIX lightMatrix) const;
+
+  public:
     // 摄像机的变换
     Transform m_Transform = {};
 
